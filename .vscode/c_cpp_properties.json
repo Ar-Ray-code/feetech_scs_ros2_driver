@@ -1,0 +1,23 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/humble/include/**",
+        "/opt/ros/humble/src/gmock_vendor/include/**",
+        "/usr/include/**",
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/../../install/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "clang-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "c99",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}
