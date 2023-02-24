@@ -1,0 +1,17 @@
+{
+  "python.autoComplete.extraPaths": [
+    "/opt/ros/humble/lib/python3.8/site-packages",
+  ],
+  "python.analysis.extraPaths": [
+    "/opt/ros/humble/lib/python3.8/site-packages"
+  ],
+  "[cpp]": {
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "zachflower.uncrustify"
+  },
+  "uncrustify.configPath.linux": ".vscode/uncrustify.cfg",
+  "xml.format.splitAttributes": true,
+  "editor.formatOnSave": true,
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+}
