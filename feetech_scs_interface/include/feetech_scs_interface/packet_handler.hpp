@@ -34,9 +34,22 @@ public:
     const rclcpp::node_interfaces::NodeClockInterface::SharedPtr = nullptr,
     const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr = nullptr);
 
-  void ping();
+  bool ping(int);
+  bool setPWMMode(const u_char);
+  bool writePos(const u_char, const u_short, const u_short, const u_short);
+  bool writeSpd(const u_char, const int16_t);
+
+  int16_t readBuf(const u_char, const u_char);
+  int16_t readPos(const u_char);
+  int16_t readSpd(const u_char);
 
 private:
   const rclcpp::Logger getLogger() noexcept;
+  u_char calcChecksum(const u_char * const, const size_t) noexcept;
+  bool checkWritten(const char *);
+
+  bool writeBuf(const u_char, const u_char, const u_char *, const u_int8_t, const u_char);
+  void host2SCS(u_char * const, u_char * const, const u_short);
+  int SCS2host(const u_char, const u_char);
 };
 }  // namespace feetech_scs_interface
