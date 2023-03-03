@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <feetech_scs_example/ping.hpp>
+#include <feetech_scs_interface/feetech_scs_interface.hpp>
 
 int main(int argc, char ** argv)
 {
@@ -27,9 +28,19 @@ int main(int argc, char ** argv)
   }
 
   using namespace std::chrono_literals;  // NOLINT
-  for (int i = 0; i < 3; ++i) {
-    packet_handler->ping(TARGET_ID);
-    rclcpp::sleep_for(1s);
+  packet_handler->writePos(TARGET_ID, 4000, 1000, 0);
+  // packet_handler->writePos(TARGET_ID, 4000, 0, 1000);
+  for (int i = 0; i < 200; i++) {
+    std::cout << "pos: " << packet_handler->readPos(TARGET_ID);
+    std::cout << " spd: " << packet_handler->readSpd(TARGET_ID) << std::endl;
+    rclcpp::sleep_for(10ms);
+  }
+  packet_handler->writePos(TARGET_ID, 0, 1000, 0);
+  // packet_handler->writePos(TARGET_ID, 0, 0, 1000);
+  for (int i = 0; i < 200; i++) {
+    std::cout << "pos: " << packet_handler->readPos(TARGET_ID);
+    std::cout << " spd: " << packet_handler->readSpd(TARGET_ID) << std::endl;
+    rclcpp::sleep_for(10ms);
   }
 
   port_handler->closePort();
