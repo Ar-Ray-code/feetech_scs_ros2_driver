@@ -82,7 +82,7 @@ int16_t PacketHandler::readBuf(
     sent += std::to_string(write_buf[i]) + " ";
   }
 
-  const ssize_t write_ret = port_handler_->writePort(
+  const ssize_t write_ret = port_handler_->write(
     reinterpret_cast<char *>(write_buf), write_buf_size);
   if (write_ret == -1) {
     return -1;
@@ -91,15 +91,15 @@ int16_t PacketHandler::readBuf(
   using namespace std::chrono_literals;  // NOLINT
   const auto clock_ = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
   const auto started = clock_->now();
-  while (port_handler_->getBytesAvailable() == 0) {
-    if (clock_->now() - started > 1s) {
-      std::cout << "timeout" << std::endl;
-      return -1;
-    }
-  }
+  // while (port_handler_->getBytesAvailable() == 0) {
+  //   if (clock_->now() - started > 1s) {
+  //     std::cout << "timeout" << std::endl;
+  //     return -1;
+  //   }
+  // }
 
   char read_buf[128];
-  const ssize_t read_ret = port_handler_->readPort(read_buf, sizeof(read_buf));
+  const ssize_t read_ret = port_handler_->read(read_buf, sizeof(read_buf));
   if (read_ret == -1) {
     return -1;
   }
@@ -137,8 +137,11 @@ bool PacketHandler::writeBuf(
     this->getLogger(),
     "Write[%zu]: %s", sizeof(write_buf), sent.c_str());
 
-  const ssize_t write_ret = this->port_handler_->writePort(
+  const ssize_t write_ret = this->port_handler_->write(
     reinterpret_cast<char *>(write_buf), sizeof(write_buf));
+  RCLCPP_DEBUG(
+    this->getLogger(),
+    "Return: %zd", write_ret);
   if (write_ret == -1) {
     return false;
   }

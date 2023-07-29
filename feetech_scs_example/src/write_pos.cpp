@@ -20,10 +20,11 @@ int main(int argc, char ** argv)
   int TARGET_ID = 1;
 
   rclcpp::init(argc, argv);
-  auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>("/dev/ttyUSB0", 1000000);
+  auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>("/dev/ttyUSB0");
   auto packet_handler = std::make_shared<feetech_scs_interface::PacketHandler>(port_handler);
 
-  if (!port_handler->openPort()) {
+  port_handler->configure(1000000);
+  if (!port_handler->open()) {
     return EXIT_FAILURE;
   }
 
@@ -43,6 +44,6 @@ int main(int argc, char ** argv)
     rclcpp::sleep_for(10ms);
   }
 
-  port_handler->closePort();
+  port_handler->close();
   return EXIT_SUCCESS;
 }

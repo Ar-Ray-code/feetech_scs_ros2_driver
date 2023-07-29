@@ -20,7 +20,6 @@ int main(int argc, char ** argv)
   int TARGET_ID = 1;
 
   rclcpp::init(argc, argv);
-  using namespace std::chrono_literals;    // NOLINT
   auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>("/dev/ttyUSB0");
   auto packet_handler = std::make_shared<feetech_scs_interface::PacketHandler>(port_handler);
 
@@ -29,33 +28,14 @@ int main(int argc, char ** argv)
     return EXIT_FAILURE;
   }
 
-  bool set_pwm_mode = packet_handler->setPWMMode(1);
-  std::cout << "set_pwm_mode: " << set_pwm_mode << std::endl;
-  rclcpp::sleep_for(1000ms);
-
-  packet_handler->writeSpd(TARGET_ID, 500);
-  for (int i = 0; i < 100; i++) {
-    std::cout << "pos: " << packet_handler->readPos(1) << std::endl;
+  using namespace std::chrono_literals;  // NOLINT
+  while (true)
+  {
+    std::cout << "pos: " << packet_handler->readPos(TARGET_ID);
+    std::cout << " spd: " << packet_handler->readSpd(TARGET_ID) << std::endl;
     rclcpp::sleep_for(10ms);
   }
-  packet_handler->writeSpd(TARGET_ID, 0);
-  for (int i = 0; i < 100; i++) {
-    std::cout << "pos: " << packet_handler->readPos(1) << std::endl;
-    rclcpp::sleep_for(10ms);
-  }
-  // rev
-  packet_handler->writeSpd(TARGET_ID, -500);
-  for (int i = 0; i < 100; i++) {
-    std::cout << "pos: " << packet_handler->readPos(1) << std::endl;
-    rclcpp::sleep_for(10ms);
-  }
-  packet_handler->writeSpd(TARGET_ID, 0);
-  for (int i = 0; i < 100; i++) {
-    std::cout << "pos: " << packet_handler->readPos(1) << std::endl;
-    rclcpp::sleep_for(10ms);
-  }
-
 
   port_handler->close();
-  return EXIT_SUCCESS;
+  return EXIT_FAILURE;
 }
