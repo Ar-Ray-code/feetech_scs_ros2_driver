@@ -14,6 +14,16 @@
 
 #pragma once
 
-#include <h6x_serial_interface/h6x_serial_interface.hpp>
-#include <feetech_scs_interface/packet_handler.hpp>
-#include <feetech_scs_interface/feetech_scs_utils.hpp>
+#define SCS0009_ANGLE_360 1160
+
+namespace feetech_scs_interface
+{
+
+class SCS0009
+{
+public:
+  static int data2angle(int);
+  static int angle2data(const int);
+};
+
+}  // namespace feetech_scs_interface
