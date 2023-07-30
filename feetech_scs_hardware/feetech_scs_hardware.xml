@@ -1,0 +1,10 @@
+<library path="feetech_scs_hardware">
+  <class
+      name="feetech_scs_hardware/FeetechScsHardware"
+      type="feetech_scs_hardware::FeetechScsHardware"
+      base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Feetech SCS Hardware Interface
+    </description>
+  </class>
+</library>
