@@ -12,8 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "feetech_scs_interface/feetech_scs_utils.hpp"
+#include <iostream>
 
-#include <h6x_serial_interface/h6x_serial_interface.hpp>
-#include <feetech_scs_interface/packet_handler.hpp>
-#include <feetech_scs_interface/feetech_scs_utils.hpp>
+namespace feetech_scs_interface
+{
+
+int SCS0009::data2angle(int data)
+{
+  return (int)(data * 360 / SCS0009_ANGLE_360);
+}
+
+int SCS0009::angle2data(const int angle)
+{
+  return angle * SCS0009_ANGLE_360 / 360;
+}
+
+}  // namespace feetech_scs_interface

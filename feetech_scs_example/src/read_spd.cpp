@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include <feetech_scs_example/ping.hpp>
+#include <feetech_scs_interface/feetech_scs_interface.hpp>
+#include <unistd.h>
+
+using namespace feetech_scs_interface;
 
 int main(int argc, char ** argv)
 {
@@ -31,18 +35,16 @@ int main(int argc, char ** argv)
   if (!port_handler->open()) {
     return EXIT_FAILURE;
   }
-  std::cout << "open success" << std::endl;
+
+  packet_handler->setTorque(TARGET_ID, 0);
 
   using namespace std::chrono_literals;  // NOLINT
-  for (int i = 0; i < 3; ++i) {
-    if (packet_handler->ping(TARGET_ID)) {
-      std::cout << "ping success" << std::endl;
-    } else {
-      std::cout << "ping fail" << std::endl;
-    }
-    std::this_thread::sleep_for(1s);
+  while (true)
+  {
+    std::cout << "spd: " << feetech_scs_interface::SCS0009::data2angle(packet_handler->readSpd(TARGET_ID)) << std::endl;
+    std::this_thread::sleep_for(100ms);
   }
 
   port_handler->close();
-  return EXIT_SUCCESS;
+  return EXIT_FAILURE;
 }

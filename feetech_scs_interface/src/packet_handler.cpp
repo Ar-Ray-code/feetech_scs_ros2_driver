@@ -40,7 +40,7 @@ u_char PacketHandler::calcChecksum(const u_char * const buf, const size_t len) n
 
 void PacketHandler::host2SCS(u_char * const data_l, u_char * const data_h, const u_short data)
 {
-  bool END = 0; // SCS
+  bool END = 1; // SCS
   if (END) {
     *data_l = (data >> 8);
     *data_h = (data & 0xff);
@@ -52,7 +52,7 @@ void PacketHandler::host2SCS(u_char * const data_l, u_char * const data_h, const
 
 int PacketHandler::SCS2host(const u_char data_l, const u_char data_h)
 {
-  bool END = 0; // SCS
+  bool END = 1; // SCS
   if (END) {
     return int((data_l << 8) + data_h);
   } else {
@@ -82,7 +82,7 @@ int16_t PacketHandler::readBuf(
     sent += std::to_string(write_buf[i]) + " ";
   }
 
-  const ssize_t write_ret = port_handler_->writePort(
+  const ssize_t write_ret = port_handler_->write(
     reinterpret_cast<char *>(write_buf), write_buf_size);
   if (write_ret == -1) {
     return -1;
@@ -91,15 +91,17 @@ int16_t PacketHandler::readBuf(
   using namespace std::chrono_literals;  // NOLINT
   const auto clock_ = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
   const auto started = clock_->now();
-  while (port_handler_->getBytesAvailable() == 0) {
-    if (clock_->now() - started > 1s) {
-      std::cout << "timeout" << std::endl;
-      return -1;
-    }
-  }
+  // while (port_handler_->getBytesAvailable() == 0) {
+  //   if (clock_->now() - started > 1s) {
+  //     std::cout << "timeout" << std::endl;
+  //     return -1;
+  //   }
+  // }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   char read_buf[128];
-  const ssize_t read_ret = port_handler_->readPort(read_buf, sizeof(read_buf));
+  const ssize_t read_ret = port_handler_->read(read_buf, sizeof(read_buf));
   if (read_ret == -1) {
     return -1;
   }
@@ -137,8 +139,11 @@ bool PacketHandler::writeBuf(
     this->getLogger(),
     "Write[%zu]: %s", sizeof(write_buf), sent.c_str());
 
-  const ssize_t write_ret = this->port_handler_->writePort(
+  const ssize_t write_ret = this->port_handler_->write(
     reinterpret_cast<char *>(write_buf), sizeof(write_buf));
+  RCLCPP_DEBUG(
+    this->getLogger(),
+    "Return: %zd", write_ret);
   if (write_ret == -1) {
     return false;
   }
@@ -160,6 +165,7 @@ bool PacketHandler::writePos(
   const u_char id, const u_short position, const u_short time, const u_short speed)
 {
   u_char bBuf[6];
+
   host2SCS(bBuf + 0, bBuf + 1, position);
   host2SCS(bBuf + 2, bBuf + 3, time);
   host2SCS(bBuf + 4, bBuf + 5, speed);
@@ -201,6 +207,69 @@ int16_t PacketHandler::readSpd(const u_char id)
     speed = -(speed & ~(1 << 15));
   }
   return speed;
+}
+
+// TODO: Fix bug to use syncWrite
+bool PacketHandler::syncWrite(const u_char *ID, const u_char IDN, const u_char MemAddr, u_char *nDat, const u_char nLen)
+{
+	u_char mesLen = ((nLen+1)*IDN+4);
+	u_char Sum = 0;
+  u_char bBuf[mesLen + 4];
+	bBuf[0] = 0xff;
+	bBuf[1] = 0xff;
+	bBuf[2] = 0xfe;
+	bBuf[3] = mesLen;
+	bBuf[4] = INST_SYNC_WRITE;
+	bBuf[5] = MemAddr;
+	bBuf[6] = nLen;
+
+	Sum = 0xfe + mesLen + INST_SYNC_WRITE + MemAddr + nLen;
+
+  u_char i, j;
+  for (i = 0; i < IDN; i++) {
+    bBuf[7 + i * (nLen + 1)] = ID[i];
+    bBuf[7 + i * (nLen + 1) + 1] = nDat[i * nLen];
+    Sum += ID[i];
+    for (j = 0; j < nLen; j++) {
+      Sum += nDat[i * nLen + j];
+    }
+  }
+
+  bBuf[7 + (nLen + 1) * IDN] = static_cast<u_char>(~Sum);
+  this->port_handler_->write(reinterpret_cast<char *>(bBuf), mesLen + 4);
+
+  return true;
+}
+
+bool PacketHandler::syncWritePos(const u_char *ID, const u_char IDN, const u_short *Position, const u_short *Time, const u_short *Speed)
+{
+    u_char offbuf[6*IDN];
+    for(u_char i = 0; i<IDN; i++){
+		u_short T, V;
+		if(Time){
+			T = Time[i];
+		}else{
+			T = 0;
+		}
+		if(Speed){
+			V = Speed[i];
+		}else{
+			V = 0;
+		}
+        host2SCS(offbuf+i*6+0, offbuf+i*6+1, Position[i]);
+        host2SCS(offbuf+i*6+2, offbuf+i*6+3, T);
+        host2SCS(offbuf+i*6+4, offbuf+i*6+5, V);
+    }
+    return syncWrite(ID, IDN, SCSCL_GOAL_POSITION_L, offbuf, 6);
+}
+
+
+
+bool PacketHandler::setTorque(const u_char id, const bool onoff)
+{
+  u_char bBuf[2];
+  host2SCS(bBuf + 0, bBuf + 1, onoff ? 1 : 0);
+  return writeBuf(id, SCSCL_TORQUE_ENABLE, bBuf, 2, INST_WRITE);
 }
 
 const rclcpp::Logger PacketHandler::getLogger() noexcept

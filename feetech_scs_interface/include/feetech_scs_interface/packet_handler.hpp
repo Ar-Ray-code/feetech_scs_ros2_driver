@@ -39,9 +39,16 @@ public:
   bool writePos(const u_char, const u_short, const u_short, const u_short);
   bool writeSpd(const u_char, const int16_t);
 
+  bool syncWrite(const u_char *, const u_char, const u_char, u_char *, const u_char);
+  bool syncWritePos(const u_char *, const u_char, const u_short *, const u_short *, const u_short *);
+
+  bool setTorque(const u_char, const bool);
+
   int16_t readBuf(const u_char, const u_char);
   int16_t readPos(const u_char);
   int16_t readSpd(const u_char);
+
+
 
 private:
   const rclcpp::Logger getLogger() noexcept;
