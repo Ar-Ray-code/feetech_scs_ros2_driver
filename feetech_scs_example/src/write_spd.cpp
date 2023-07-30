@@ -20,6 +20,7 @@ int main(int argc, char ** argv)
   int TARGET_ID = 1;
 
   rclcpp::init(argc, argv);
+
   using namespace std::chrono_literals;    // NOLINT
   auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>("/dev/ttyUSB0");
   auto packet_handler = std::make_shared<feetech_scs_interface::PacketHandler>(port_handler);

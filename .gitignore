@@ -61,3 +61,4 @@ target/
 # VSCode garbages
 *.vc.db*
 feetech_scs_hardware/
+sync_write*
