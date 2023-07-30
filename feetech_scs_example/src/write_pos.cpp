@@ -38,11 +38,14 @@ void set_target_pose(std::shared_ptr<feetech_scs_interface::PacketHandler> packe
 
 int main(int argc, char ** argv)
 {
-  int TARGET_ID = 2;
-  std::string port_name = "/dev/ttyUSB0";
-  int baudrate = 1000000;
+  if (argc != 4) {
+    std::cout << "Usage: " << argv[0] << " <id (0)> <port_name (/dev/ttyUSB0)> <baudrate (1000000)>" << std::endl;
+    return EXIT_FAILURE;
+  }
+  int TARGET_ID = std::stoi(argv[1]);
+  std::string port_name = argv[2];
+  int baudrate = std::stoi(argv[3]);
 
-  rclcpp::init(argc, argv);
   auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>(port_name);
   auto packet_handler = std::make_shared<feetech_scs_interface::PacketHandler>(port_handler);
 

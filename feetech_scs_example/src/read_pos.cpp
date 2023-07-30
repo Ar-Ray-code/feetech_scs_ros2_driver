@@ -20,11 +20,14 @@ using namespace feetech_scs_interface;
 
 int main(int argc, char ** argv)
 {
-  int TARGET_ID = 1;
-  int baudrate = 1000000;
-  std::string port_name = "/dev/ttyUSB0";
+  if (argc != 4) {
+    std::cout << "Usage: " << argv[0] << " <id (0)> <port_name (/dev/ttyUSB0)> <baudrate (1000000)>" << std::endl;
+    return EXIT_FAILURE;
+  }
+  int TARGET_ID = std::stoi(argv[1]);
+  std::string port_name = argv[2];
+  int baudrate = std::stoi(argv[3]);
 
-  rclcpp::init(argc, argv);
   auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>(port_name);
   auto packet_handler = std::make_shared<feetech_scs_interface::PacketHandler>(port_handler);
 
@@ -36,12 +39,12 @@ int main(int argc, char ** argv)
   packet_handler->setTorque(TARGET_ID, 0);
 
   using namespace std::chrono_literals;  // NOLINT
-  for (int i = 0; i < 100; i++)
+  while (true)
   {
     std::cout << "pos: " << feetech_scs_interface::SCS0009::data2angle(packet_handler->readPos(TARGET_ID)) << std::endl;
     std::this_thread::sleep_for(100ms);
   }
 
   port_handler->close();
-  return EXIT_SUCCESS;
+  return EXIT_FAILURE;
 }

@@ -16,13 +16,18 @@
 
 int main(int argc, char ** argv)
 {
-  int TARGET_ID = 1;
+  if (argc != 4) {
+    std::cout << "Usage: " << argv[0] << " <id (0)> <port_name (/dev/ttyUSB0)> <baudrate (1000000)>" << std::endl;
+    return EXIT_FAILURE;
+  }
+  int TARGET_ID = std::stoi(argv[1]);
+  std::string port_name = argv[2];
+  int baudrate = std::stoi(argv[3]);
 
-  rclcpp::init(argc, argv);
-  auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>("/dev/ttyUSB0");
+  auto port_handler = std::make_shared<h6x_serial_interface::PortHandler>(port_name);
   auto packet_handler = std::make_shared<feetech_scs_interface::PacketHandler>(port_handler);
 
-  port_handler->configure(1000000);
+  port_handler->configure(baudrate);
   if (!port_handler->open()) {
     return EXIT_FAILURE;
   }
@@ -35,7 +40,7 @@ int main(int argc, char ** argv)
     } else {
       std::cout << "ping fail" << std::endl;
     }
-    rclcpp::sleep_for(1s);
+    std::this_thread::sleep_for(1s);
   }
 
   port_handler->close();
