@@ -209,11 +209,12 @@ int16_t PacketHandler::readSpd(const u_char id)
   return speed;
 }
 
+// TODO: Fix bug to use syncWrite
 bool PacketHandler::syncWrite(const u_char *ID, const u_char IDN, const u_char MemAddr, u_char *nDat, const u_char nLen)
 {
 	u_char mesLen = ((nLen+1)*IDN+4);
 	u_char Sum = 0;
-	u_char bBuf[7];
+  u_char bBuf[mesLen + 4];
 	bBuf[0] = 0xff;
 	bBuf[1] = 0xff;
 	bBuf[2] = 0xfe;
@@ -221,20 +222,22 @@ bool PacketHandler::syncWrite(const u_char *ID, const u_char IDN, const u_char M
 	bBuf[4] = INST_SYNC_WRITE;
 	bBuf[5] = MemAddr;
 	bBuf[6] = nLen;
-  this->port_handler_->write(reinterpret_cast<char *>(bBuf), 7);
 
 	Sum = 0xfe + mesLen + INST_SYNC_WRITE + MemAddr + nLen;
 
   u_char i, j;
   for (i = 0; i < IDN; i++) {
-    this->port_handler_->write(reinterpret_cast<char *>(ID[i]), 1);
-    this->port_handler_->write(reinterpret_cast<char *>(nDat + i * nLen), nLen);
+    bBuf[7 + i * (nLen + 1)] = ID[i];
+    bBuf[7 + i * (nLen + 1) + 1] = nDat[i * nLen];
     Sum += ID[i];
     for (j = 0; j < nLen; j++) {
       Sum += nDat[i * nLen + j];
     }
   }
-  this->port_handler_->write(reinterpret_cast<char *>(~Sum), 1);
+
+  bBuf[7 + (nLen + 1) * IDN] = static_cast<u_char>(~Sum);
+  this->port_handler_->write(reinterpret_cast<char *>(bBuf), mesLen + 4);
+
   return true;
 }
 
