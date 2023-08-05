@@ -27,17 +27,6 @@
 namespace feetech_scs_hardware
 {
 constexpr const char * kFeetechScsHardware = "FeetechScsHardware";
-constexpr uint8_t kGoalPositionIndex = 0;
-constexpr uint8_t kGoalVelocityIndex = 1;
-constexpr uint8_t kPresentPositionVelocityCurrentIndex = 0;
-constexpr const char * kGoalPositionItem = "Goal_Position";
-constexpr const char * kGoalVelocityItem = "Goal_Velocity";
-constexpr const char * kMovingSpeedItem = "Moving_Speed";
-constexpr const char * kPresentPositionItem = "Present_Position";
-constexpr const char * kPresentVelocityItem = "Present_Velocity";
-constexpr const char * kPresentSpeedItem = "Present_Speed";
-constexpr const char * kPresentCurrentItem = "Present_Current";
-constexpr const char * kPresentLoadItem = "Present_Load";
 constexpr const char * const kExtraJointParameters[] = {
   "Profile_Velocity",
   "Profile_Acceleration",
@@ -96,17 +85,10 @@ CallbackReturn FeetechScsHardware::on_init(const hardware_interface::HardwareInf
     return CallbackReturn::ERROR;
   }
 
-
-  // TODO: implement ping
-  // TODO: enable torque
-  enable_torque(true);
-
-  // TODO: disable torque
-  enable_torque(false);
   set_control_mode(ControlMode::Position, true);
   set_joint_params();
   // TODO: enable torque
-  enable_torque(true);
+  enable_torque(false);
 
   return CallbackReturn::SUCCESS;
 }
@@ -154,6 +136,8 @@ CallbackReturn FeetechScsHardware::on_activate(const rclcpp_lifecycle::State & /
   read(rclcpp::Time{}, rclcpp::Duration(0, 0));
   reset_command();
   write(rclcpp::Time{}, rclcpp::Duration(0, 0));
+
+  enable_torque(false);
 
   return CallbackReturn::SUCCESS;
 }

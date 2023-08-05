@@ -30,6 +30,9 @@ ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
 set(TARGET write_spd)
 ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
 
+set(TARGET set_pos)
+ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)

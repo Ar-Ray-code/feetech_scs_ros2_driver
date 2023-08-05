@@ -99,6 +99,9 @@ private:
   std::shared_ptr<h6x_serial_interface::PortHandler> port_handler_;
   std::shared_ptr<feetech_scs_interface::PacketHandler> packet_handler_;
 
+  std::vector<double> hw_positions_;
+  std::vector<double> hw_velocities_;
+
   std::vector<Joint> joints_;
   std::vector<uint8_t> joint_ids_;
   bool torque_enabled_{false};
