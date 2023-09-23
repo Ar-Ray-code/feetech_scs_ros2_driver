@@ -28,7 +28,9 @@ https://pages.switch-science.com/comparison/feetech-servos#serial
 
 ### FeeTech-SCS
 
-STS will be supported in the future.
+| Product Name | Support |
+| --- | --- |
+| STS3032 | ✔️ |
 
 <br>
 
