@@ -12,8 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "feetech_sts_interface/feetech_sts_utils.hpp"
+#include <iostream>
 
-#include <h6x_serial_interface/h6x_serial_interface.hpp>
-#include <feetech_sts_interface/packet_handler.hpp>
-#include <feetech_sts_interface/feetech_sts_utils.hpp>
+namespace feetech_sts_interface
+{
+
+float STS3032::data2angle(int data)
+{
+  return ((float)data * 360 / STS3032_ANGLE_360);
+}
+
+int STS3032::angle2data(const float angle)
+{
+  return (int)(angle * STS3032_ANGLE_360 / 360);
+}
+
+}  // namespace feetech_sts_interface

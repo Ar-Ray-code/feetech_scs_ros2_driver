@@ -14,6 +14,15 @@
 
 #pragma once
 
-#include <h6x_serial_interface/h6x_serial_interface.hpp>
-#include <feetech_sts_interface/packet_handler.hpp>
-#include <feetech_sts_interface/feetech_sts_utils.hpp>
+#define STS3032_ANGLE_360 4096
+
+namespace feetech_sts_interface
+{
+
+namespace STS3032
+{
+float data2angle(int);
+int angle2data(const float);
+}
+
+}  // namespace feetech_sts_interface

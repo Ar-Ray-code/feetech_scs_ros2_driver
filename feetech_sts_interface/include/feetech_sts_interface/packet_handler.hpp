@@ -1,4 +1,4 @@
-// Copyright 2023 Ar-Ray-code.
+// Copyright 2023 fateshelled.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,29 +34,19 @@ namespace feetech_sts_interface
         const rclcpp::node_interfaces::NodeClockInterface::SharedPtr = nullptr,
         const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr = nullptr);
 
-    // OK
     bool ping(int);
-    // OK
     bool setWheelMode(const u_char);
 
-    // OK
     bool writePosEx(const u_char, const u_short, const u_short, const u_short);
-    // OK
     bool syncWritePosEx(const u_char *, const u_char, const u_short *, const u_short *, const u_short *);
 
-    // OK
     bool setTorque(const u_char, const bool);
-
     bool calbrationOffset(const u_char);
 
-    // OK
     bool writeSpd(const u_char, const int16_t, const u_char);
 
-    // OK
     int16_t readBuf(const u_char, const u_char);
-    // OK
     int16_t readPos(const u_char);
-    // OK
     int16_t readSpd(const u_char);
 
     bool syncWrite(const u_char *, const u_char, const u_char, u_char *, const u_char);

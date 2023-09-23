@@ -1,4 +1,4 @@
-// Copyright 2023 Ar-Ray-code.
+// Copyright 2023 fateshelled.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ namespace feetech_sts_interface
 
     void PacketHandler::host2STS(u_char *const data_l, u_char *const data_h, const u_short data)
     {
-        bool END = 1; // STS
+        const bool END = 0; // STS
         if (END)
         {
             *data_l = (data >> 8);
@@ -56,7 +56,7 @@ namespace feetech_sts_interface
 
     int PacketHandler::STS2host(const u_char data_l, const u_char data_h)
     {
-        bool END = 1; // STS
+        const bool END = 0; // STS
         if (END)
         {
             return int((data_l << 8) + data_h);
@@ -83,11 +83,11 @@ namespace feetech_sts_interface
         write_buf[6] = length;
         write_buf[7] = calcChecksum(write_buf, write_buf_size);
 
-        std::string sent = "";
-        for (long int i = 0; i < write_buf_size; i++)
-        {
-            sent += std::to_string(write_buf[i]) + " ";
-        }
+        // std::string sent = "";
+        // for (long int i = 0; i < write_buf_size; i++)
+        // {
+        //     sent += std::to_string(write_buf[i]) + " ";
+        // }
 
         const ssize_t write_ret = port_handler_->write(
             reinterpret_cast<char *>(write_buf), write_buf_size);
@@ -114,11 +114,11 @@ namespace feetech_sts_interface
         {
             return -1;
         }
-        std::string recv = "";
-        for (long int i = 0; i < read_ret; i++)
-        {
-            recv += std::to_string(read_buf[i]) + " ";
-        }
+        // std::string recv = "";
+        // for (long int i = 0; i < read_ret; i++)
+        // {
+        //     recv += std::to_string(read_buf[i]) + " ";
+        // }
         return STS2host(read_buf[5], read_buf[6]);
     }
 
@@ -167,7 +167,7 @@ namespace feetech_sts_interface
     {
         u_char bBuf[2];
         host2STS(bBuf + 0, bBuf + 1, 1);
-        return writeBuf(id, SMS_STS_MODE, bBuf, 2, INST_WRITE);
+        return writeBuf(id, SMS_STS_MODE, bBuf, sizeof(bBuf), INST_WRITE);
     }
 
     bool PacketHandler::ping(int id)
@@ -189,7 +189,7 @@ namespace feetech_sts_interface
         host2STS(bBuf + 3, bBuf + 4, 0);
         host2STS(bBuf + 4, bBuf + 6, speed);
 
-        return writeBuf(id, SMS_STS_ACC, bBuf, 7, INST_WRITE);
+        return writeBuf(id, SMS_STS_ACC, bBuf, sizeof(bBuf), INST_WRITE);
     }
 
     bool PacketHandler::writeSpd(
@@ -204,12 +204,12 @@ namespace feetech_sts_interface
         u_char bBuf[2];
         host2STS(bBuf + 0, bBuf + 1, speed_pwm);
 
-        return writeBuf(id, SMS_STS_GOAL_SPEED_L, bBuf, 2, INST_WRITE);
+        return writeBuf(id, SMS_STS_GOAL_SPEED_L, bBuf, sizeof(bBuf), INST_WRITE);
     }
 
     int16_t PacketHandler::readPos(const u_char id)
     {
-        auto ret = this->readBuf(id, SMS_STS_PRESENT_POSITION_L);
+        int16_t ret = this->readBuf(id, SMS_STS_PRESENT_POSITION_L);
         if (ret == -1)
         {
             return -1;
@@ -309,11 +309,19 @@ namespace feetech_sts_interface
 
     bool PacketHandler::setTorque(const u_char id, const bool onoff)
     {
+        // return writeByte(ID, SMS_STS_TORQUE_ENABLE, Enable);
         u_char bBuf[2];
         host2STS(bBuf + 0, bBuf + 1, onoff ? 1 : 0);
-        return writeBuf(id, SMS_STS_TORQUE_ENABLE, bBuf, 2, INST_WRITE);
+        return writeBuf(id, SMS_STS_TORQUE_ENABLE, bBuf, sizeof(bBuf), INST_WRITE);
     }
 
+    bool PacketHandler::calbrationOffset(const u_char id)
+    {
+        // return writeByte(ID, SMS_STS_TORQUE_ENABLE, 128);
+        u_char bBuf[2];
+        host2STS(bBuf + 0, bBuf + 1, 128);
+        return writeBuf(id, SMS_STS_TORQUE_ENABLE, bBuf, sizeof(bBuf), INST_WRITE);
+    }
     const rclcpp::Logger PacketHandler::getLogger() noexcept
     {
         return this->logger_;
