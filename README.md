@@ -30,7 +30,7 @@ https://pages.switch-science.com/comparison/feetech-servos#serial
 
 | Product Name | Support |
 | --- | --- |
-| STS3032 | ✔️ |
+| STS3032 |  |
 
 <br>
 
