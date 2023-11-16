@@ -29,20 +29,19 @@ namespace feetech_sts_interface
     {
     }
 
-    u_char PacketHandler::calcChecksum(const u_char *const buf, const size_t len) noexcept
-    {
-        u_char checksum = 0;
-        for (size_t i = 2; i < len - 1; ++i)
-        {
-            checksum += buf[i];
-        }
-        return ~checksum;
-    }
+    // u_char PacketHandler::calcChecksum(const u_char *const buf, const size_t len) noexcept
+    // {
+    //     u_char checksum = 0;
+    //     for (size_t i = 2; i < len - 1; ++i)
+    //     {
+    //         checksum += buf[i];
+    //     }
+    //     return ~checksum;
+    // }
 
     void PacketHandler::host2STS(u_char *const data_l, u_char *const data_h, const u_short data)
     {
-        const bool END = 0; // STS
-        if (END)
+        if (END_)
         {
             *data_l = (data >> 8);
             *data_h = (data & 0xff);
@@ -56,8 +55,7 @@ namespace feetech_sts_interface
 
     int PacketHandler::STS2host(const u_char data_l, const u_char data_h)
     {
-        const bool END = 0; // STS
-        if (END)
+        if (END_)
         {
             return int((data_l << 8) + data_h);
         }
@@ -67,129 +65,238 @@ namespace feetech_sts_interface
         }
     }
 
-    int16_t PacketHandler::readBuf(
+    int16_t PacketHandler::readWord(
         const u_char id, const u_char mem_adder)
     {
-        const int length = 2;
-        const int write_buf_size = length + 6;
-        u_char write_buf[write_buf_size];
-        write_buf[0] = 0xFF;
-        write_buf[1] = 0xFF;
-
-        write_buf[2] = id;
-        write_buf[3] = 2 + length; // Message length
-        write_buf[4] = INST_READ;
-        write_buf[5] = mem_adder;
-        write_buf[6] = length;
-        write_buf[7] = calcChecksum(write_buf, write_buf_size);
-
-        // std::string sent = "";
-        // for (long int i = 0; i < write_buf_size; i++)
-        // {
-        //     sent += std::to_string(write_buf[i]) + " ";
-        // }
-
-        const ssize_t write_ret = port_handler_->write(
-            reinterpret_cast<char *>(write_buf), write_buf_size);
-        if (write_ret == -1)
+        uint8_t buf[2] = {};
+        int size = read(id, mem_adder, buf, 2);
+        if (size != 2)
         {
             return -1;
         }
+        return STS2host(buf[0], buf[1]);
+    }
 
-        using namespace std::chrono_literals; // NOLINT
-        const auto clock_ = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
-        const auto started = clock_->now();
-        // while (port_handler_->getBytesAvailable() == 0) {
-        //   if (clock_->now() - started > 1s) {
-        //     std::cout << "timeout" << std::endl;
-        //     return -1;
-        //   }
-        // }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-        char read_buf[128];
-        const ssize_t read_ret = port_handler_->read(read_buf, sizeof(read_buf));
-        if (read_ret == -1)
+    int PacketHandler::ask(const u_char id)
+    {
+        int error_ = 0;
+        int level_ = 1;
+        if (id != 0xfe && level_)
         {
-            return -1;
+            if (!checkHead())
+            {
+                return 0;
+            }
+            uint8_t b_buf[4];
+            if (this->port_handler_->read(reinterpret_cast<char *>(&b_buf), 4) != 4)
+            {
+                return 0;
+            }
+            if (b_buf[0] != id)
+            {
+                return 0;
+            }
+            if (b_buf[1] != 2)
+            {
+                return 0;
+            }
+            uint8_t cal_sum = ~(b_buf[0] + b_buf[1] + b_buf[2]);
+            if (cal_sum != b_buf[3])
+            {
+                return 0;
+            }
+            error_ = b_buf[2];
         }
-        // std::string recv = "";
-        // for (long int i = 0; i < read_ret; i++)
-        // {
-        //     recv += std::to_string(read_buf[i]) + " ";
-        // }
-        return STS2host(read_buf[5], read_buf[6]);
+        return 1;
+    }
+
+    int PacketHandler::checkHead()
+    {
+        uint8_t b_dat;
+        uint8_t b_buf[2] = {0, 0};
+        uint8_t cnt = 0;
+        while (1)
+        {
+            if (!port_handler_->read(reinterpret_cast<char *>(&b_dat), 1))
+            {
+                return 0;
+            }
+            b_buf[1] = b_buf[0];
+            b_buf[0] = b_dat;
+            if (b_buf[0] == 0xff && b_buf[1] == 0xff)
+            {
+                break;
+            }
+            cnt++;
+            if (cnt > 10)
+            {
+                return 0;
+            }
+        }
+        return 1;
+    }
+
+    int PacketHandler::read(const u_char id, const u_char mem_adder, u_char *n_data, u_char n_len)
+    {
+        read_flush();
+        writeBuf(id, mem_adder, &n_len, 1, INST_READ);
+        write_flush();
+
+        if (!checkHead())
+        {
+            return 0;
+        }
+        u_char buf[4];
+        if (port_handler_->read(reinterpret_cast<char *>(buf), 3) != 3)
+        {
+            return 0;
+        }
+        int size = port_handler_->read(reinterpret_cast<char *>(n_data), n_len);
+        if (size != n_len)
+        {
+            return 0;
+        }
+        if (port_handler_->read(reinterpret_cast<char *>(buf + 3), 1) != 1)
+        {
+            return 0;
+        }
+        u_char cal_sum = buf[0] + buf[1] + buf[2];
+        for (u_char i = 0; i < size; ++i)
+        {
+            cal_sum += n_data[i];
+        }
+        cal_sum = ~cal_sum;
+        if (cal_sum != buf[3])
+        {
+            return 0;
+        }
+        return size;
+    }
+
+    bool PacketHandler::writeByte(const u_char id, const u_char mem_adder, const u_char data)
+    {
+        read_flush();
+        bool ret = writeBuf(id, mem_adder, &data, 1, INST_WRITE);
+        write_flush();
+        return ret;
+    }
+
+    bool PacketHandler::writeWord(const u_char id, const u_char mem_adder, const uint16_t data)
+    {
+        uint8_t buf[2] = {};
+        host2STS(buf + 0, buf + 1, data);
+        read_flush();
+        bool ret = writeBuf(id, mem_adder, buf, sizeof(buf), INST_WRITE);
+        write_flush();
+        return ret;
     }
 
     bool PacketHandler::writeBuf(
         const u_char id, const u_char mem_adder, const u_char *const param,
         const u_int8_t param_len, const u_char function)
     {
-        const int length = param_len + 7;
-        u_char write_buf[length];
+        u_char write_buf[7 + param_len];
+        u_char check_sum = 0;
         write_buf[0] = 0xFF;
         write_buf[1] = 0xFF;
-
         write_buf[2] = id;
         write_buf[3] = 3 + param_len; // Message length
-
         write_buf[4] = function;
         write_buf[5] = mem_adder;
         for (size_t i = 0; i < param_len; ++i)
         {
             write_buf[6 + i] = param[i];
         }
-        write_buf[6 + param_len] = calcChecksum(write_buf, sizeof(write_buf));
-
-        std::string sent = "";
-        for (size_t i = 0; i < sizeof(write_buf); ++i)
+        check_sum = id + (3 + param_len) + function + mem_adder;
+        for (size_t i = 0; i < param_len; ++i)
         {
-            sent += std::to_string(write_buf[i]) + " ";
+            check_sum += param[i];
         }
-        RCLCPP_DEBUG(
-            this->getLogger(),
-            "Write[%zu]: %s", sizeof(write_buf), sent.c_str());
+        write_buf[6 + param_len] = ~check_sum;
 
-        const ssize_t write_ret = this->port_handler_->write(
-            reinterpret_cast<char *>(write_buf), sizeof(write_buf));
-        RCLCPP_DEBUG(
-            this->getLogger(),
-            "Return: %zd", write_ret);
-        if (write_ret == -1)
+        auto ret = port_handler_->write(reinterpret_cast<char *>(write_buf), sizeof(write_buf));
+        if (ret == -1)
         {
             return false;
         }
         return true;
     }
 
+    bool PacketHandler::genWrite(
+        const u_char id, const u_char mem_adder,
+        const u_char *const param, const u_int8_t param_len)
+    {
+        read_flush();
+        writeBuf(id, mem_adder, param, param_len, INST_REG_WRITE);
+        write_flush();
+        return ask(id);
+    }
+
+    bool PacketHandler::setRotationMode(const u_char id)
+    {
+        return writeByte(id, SMS_STS_MODE, 0);
+    }
     bool PacketHandler::setWheelMode(const u_char id)
     {
-        u_char bBuf[2];
-        host2STS(bBuf + 0, bBuf + 1, 1);
-        return writeBuf(id, SMS_STS_MODE, bBuf, sizeof(bBuf), INST_WRITE);
+        return writeByte(id, SMS_STS_MODE, 1);
+    }
+    bool PacketHandler::setOpenLoopWheelMode(const u_char id)
+    {
+        return writeByte(id, SMS_STS_MODE, 2);
+    }
+    bool PacketHandler::setStepMode(const u_char id)
+    {
+        return writeByte(id, SMS_STS_MODE, 3);
     }
 
     bool PacketHandler::ping(int id)
     {
-        return writeBuf(id, 0, nullptr, 0, INST_PING);
+        read_flush();
+        auto ret = writeBuf(id, 0, nullptr, 0, INST_PING);
+        write_flush();
+
+        int error_ = 0;
+        if (!checkHead())
+        {
+            return -1;
+        }
+        uint8_t b_buf[4];
+        if (this->port_handler_->read(reinterpret_cast<char *>(b_buf), 4) != 4)
+        {
+            return -1;
+        }
+        if (b_buf[0] != id && id != 0xfe)
+        {
+            return -1;
+        }
+        if (b_buf[1] != 2)
+        {
+            return -1;
+        }
+        uint8_t cal_sum = ~(b_buf[0] + b_buf[1] + b_buf[2]);
+        if (cal_sum != b_buf[3])
+        {
+            return -1;
+        }
+        error_ = b_buf[2];
+        return ret;
     }
 
-    bool PacketHandler::writePosEx(const u_char id, const u_short position, const u_short speed, const u_short acc)
+    bool PacketHandler::writePosEx(const u_char id, const int16_t position, const u_short speed, const u_short acc)
     {
-        u_short pos = position;
+        int16_t pos = position;
         if (pos < 0)
         {
             pos = -pos;
             pos |= (1 << 15);
         }
         u_char bBuf[7];
-        bBuf[0] = acc;
-        host2STS(bBuf + 1, bBuf + 2, pos);
-        host2STS(bBuf + 3, bBuf + 4, 0);
-        host2STS(bBuf + 4, bBuf + 6, speed);
+        bBuf[0] = acc;                       // SMS_STS_ACC 41
+        host2STS(bBuf + 1, bBuf + 2, pos);   // SMS_STS_GOAL_POSITION 42, 43
+        host2STS(bBuf + 3, bBuf + 4, 0);     // SMS_STS_GOAL_TIME 44, 45
+        host2STS(bBuf + 4, bBuf + 6, speed); // SMS_STS_GOAL_SPEED 46, 47
 
-        return writeBuf(id, SMS_STS_ACC, bBuf, sizeof(bBuf), INST_WRITE);
+        return genWrite(id, SMS_STS_ACC, bBuf, sizeof(bBuf));
     }
 
     bool PacketHandler::writeSpd(
@@ -202,48 +309,76 @@ namespace feetech_sts_interface
             speed_pwm |= (1 << 15);
         }
         u_char bBuf[2];
+        bBuf[0] = acc;
+        writeBuf(id, SMS_STS_ACC, bBuf, 1, INST_WRITE);
         host2STS(bBuf + 0, bBuf + 1, speed_pwm);
 
-        return writeBuf(id, SMS_STS_GOAL_SPEED_L, bBuf, sizeof(bBuf), INST_WRITE);
+        return genWrite(id, SMS_STS_GOAL_SPEED_L, bBuf, sizeof(bBuf));
     }
+
+    // bool PacketHandler::syncWriteSpd(const u_char *id, const u_char idn, const int16_t *speed, const u_char *acc)
+    // {
+    //     u_char acc_buf[idn];
+    //     u_char spd_buf[2 * idn];
+    //     for (u_char i = 0; i < idn; i++)
+    //     {
+    //         int16_t speed_pwm = speed[i];
+    //         if (speed_pwm < 0)
+    //         {
+    //             speed_pwm = -speed_pwm;
+    //             speed_pwm |= (1 << 15);
+    //         }
+    //         acc_buf[i * 2] = acc[i];
+    //         host2STS(spd_buf + i * 2 + 1, spd_buf + i * 2 + 2, speed_pwm);
+    //     }
+    //     bool ret;
+    //     ret = syncWrite(id, idn, SMS_STS_ACC, acc_buf, 1);
+    //     ret &= syncWrite(id, idn, SMS_STS_GOAL_SPEED_L, spd_buf, 2);
+
+    //     ret &= this->triggerAction();
+    //     return ret;
+    // }
 
     int16_t PacketHandler::readPos(const u_char id)
     {
-        int16_t ret = this->readBuf(id, SMS_STS_PRESENT_POSITION_L);
-        if (ret == -1)
+        int err = 0;
+        int16_t pos = -1;
+        pos = this->readWord(id, SMS_STS_PRESENT_POSITION_L);
+        if (pos == -1)
         {
-            return -1;
+            err = 1;
         }
-        int16_t position = ret;
-        if (ret && (position & (1 << 15)))
+        if (!err && (pos & (1 << 15)))
         {
-            position = -(position & ~(1 << 15));
+            pos = -(pos & ~(1 << 15));
         }
-
-        return position;
+        return pos;
     }
 
     int16_t PacketHandler::readSpd(const u_char id)
     {
-        auto ret = this->readBuf(id, SMS_STS_PRESENT_SPEED_L);
-        if (ret == -1)
+        int err = 0;
+        auto speed = -1;
+        speed = this->readWord(id, SMS_STS_PRESENT_SPEED_L);
+        if (speed == -1)
         {
+            err = 1;
             return -1;
         }
-        int16_t speed = ret;
-        if (ret && (speed & (1 << 15)))
+        if (!err && (speed & (1 << 15)))
         {
             speed = -(speed & ~(1 << 15));
         }
         return speed;
     }
 
-    // TODO: Fix bug to use syncWrite
     bool PacketHandler::syncWrite(const u_char *ID, const u_char IDN, const u_char MemAddr, u_char *nDat, const u_char nLen)
     {
+        this->read_flush();
+
         u_char mesLen = ((nLen + 1) * IDN + 4);
         u_char Sum = 0;
-        u_char bBuf[mesLen + 4];
+        u_char bBuf[7] = {0};
         bBuf[0] = 0xff;
         bBuf[1] = 0xff;
         bBuf[2] = 0xfe;
@@ -251,42 +386,53 @@ namespace feetech_sts_interface
         bBuf[4] = INST_SYNC_WRITE;
         bBuf[5] = MemAddr;
         bBuf[6] = nLen;
+        this->port_handler_->write(reinterpret_cast<char *>(bBuf), sizeof(bBuf));
 
         Sum = 0xfe + mesLen + INST_SYNC_WRITE + MemAddr + nLen;
 
-        u_char i, j;
-        for (i = 0; i < IDN; i++)
+        for (size_t i = 0; i < IDN; ++i)
         {
-            bBuf[7 + i * (nLen + 1)] = ID[i];
-            bBuf[7 + i * (nLen + 1) + 1] = nDat[i * nLen];
+            this->port_handler_->write(reinterpret_cast<const char *>(&ID[i]), 1);
+            this->port_handler_->write(reinterpret_cast<const char *>(nDat + i * nLen), nLen);
+            // std::cout << "write ID: " << (int)ID[i] << std::endl;
+            // std::cout << "write nDat: ";
+            // for (size_t j = 0; j < nLen; ++j)
+            // {
+            //     std::cout << (int)nDat[i * nLen + j] << ", ";
+            // }
+            // std::cout << std::endl;
             Sum += ID[i];
-            for (j = 0; j < nLen; j++)
+            for (size_t j = 0; j < nLen; ++j)
             {
                 Sum += nDat[i * nLen + j];
             }
         }
-
-        bBuf[7 + (nLen + 1) * IDN] = static_cast<u_char>(~Sum);
-        this->port_handler_->write(reinterpret_cast<char *>(bBuf), mesLen + 4);
-
+        char s = ~Sum;
+        this->port_handler_->write(&s, 1);
+        write_flush();
         return true;
     }
 
-    bool PacketHandler::syncWritePosEx(const u_char *ID, const u_char IDN, const u_short *Position, const u_short *Speed, const u_short *ACC)
+    bool PacketHandler::syncWritePosEx(const u_char *ID, const u_char IDN, const int16_t *Position, const int16_t *Speed, const u_short *ACC)
     {
         u_char offbuf[7 * IDN];
-        for (u_char i = 0; i < IDN; i++)
+        for (u_char i = 0; i < IDN; ++i)
         {
-            u_short pos = Position[i];
-            // if (pos < 0)
-            // {
-            //     pos = -pos;
-            //     pos |= (1 << 15);
-            // }
-            u_short V;
+            int16_t pos = Position[i];
+            if (pos < 0)
+            {
+                pos = -pos;
+                pos |= (1 << 15);
+            }
+            int16_t V;
             if (Speed)
             {
                 V = Speed[i];
+                if (V < 0)
+                {
+                    V = -V;
+                    V |= (1 << 15);
+                }
             }
             else
             {
@@ -300,31 +446,84 @@ namespace feetech_sts_interface
             {
                 offbuf[i * 7] = 0;
             }
-            host2STS(offbuf + i * 7 + 1, offbuf + i * 7 + 3, pos);
+            // acc, pos_l, pos_h, 0, 0, vel_l, vel_h
+            host2STS(offbuf + i * 7 + 1, offbuf + i * 7 + 2, pos);
             host2STS(offbuf + i * 7 + 3, offbuf + i * 7 + 4, 0);
             host2STS(offbuf + i * 7 + 5, offbuf + i * 7 + 6, V);
         }
-        return syncWrite(ID, IDN, SMS_STS_ACC, offbuf, 6);
+        return syncWrite(ID, IDN, SMS_STS_ACC, offbuf, 7);
     }
 
-    bool PacketHandler::setTorque(const u_char id, const bool onoff)
+    bool PacketHandler::setTorque(const u_char id, const bool on)
     {
-        // return writeByte(ID, SMS_STS_TORQUE_ENABLE, Enable);
-        u_char bBuf[2];
-        host2STS(bBuf + 0, bBuf + 1, onoff ? 1 : 0);
-        return writeBuf(id, SMS_STS_TORQUE_ENABLE, bBuf, sizeof(bBuf), INST_WRITE);
+        return writeByte(id, SMS_STS_TORQUE_ENABLE, on ? 1 : 0);
     }
 
     bool PacketHandler::calbrationOffset(const u_char id)
     {
-        // return writeByte(ID, SMS_STS_TORQUE_ENABLE, 128);
-        u_char bBuf[2];
-        host2STS(bBuf + 0, bBuf + 1, 128);
-        return writeBuf(id, SMS_STS_TORQUE_ENABLE, bBuf, sizeof(bBuf), INST_WRITE);
+        return writeByte(id, SMS_STS_TORQUE_ENABLE, 128);
     }
+
+    bool PacketHandler::setMaxAngleLimit(const u_char id, const int16_t angle)
+    {
+        uint8_t buf[2] = {};
+        if(angle < 0)
+        {
+            host2STS(buf, buf + 1, 0);
+        }
+        else if(angle > 4095)
+        {
+            host2STS(buf, buf + 1, 4095);
+        }
+        else
+        {
+            host2STS(buf, buf + 1, angle);
+        }
+        return genWrite(id, SMS_STS_MAX_ANGLE_LIMIT_L, buf, sizeof(buf));
+    }
+
+    bool PacketHandler::setMinAngleLimit(const u_char id, const int16_t angle)
+    {
+        uint8_t buf[2] = {};
+        if(angle < 0)
+        {
+            host2STS(buf, buf + 1, 0);
+        }
+        else if(angle > 4095)
+        {
+            host2STS(buf, buf + 1, 4095);
+        }
+        else
+        {
+            host2STS(buf, buf + 1, angle);
+        }
+        return genWrite(id, SMS_STS_MIN_ANGLE_LIMIT_L, buf, sizeof(buf));
+    }
+
+    bool PacketHandler::lockEprom(const u_char id)
+    {
+        return writeByte(id, SMS_STS_LOCK, 1);
+    }
+
+    bool PacketHandler::unlockEprom(const u_char id)
+    {
+        return writeByte(id, SMS_STS_LOCK, 0);
+    }
+
+    int PacketHandler::reg_write_action(const u_char id)
+    {
+        read_flush();
+        bool ret = writeBuf(id, 0, nullptr, 0, INST_REG_ACTION);
+        write_flush();
+        return ask(id);
+    }
+
     const rclcpp::Logger PacketHandler::getLogger() noexcept
     {
         return this->logger_;
     }
+
+    void PacketHandler::read_flush() {}
+    void PacketHandler::write_flush() {}
 
 } // namespace feetech_sts_interface

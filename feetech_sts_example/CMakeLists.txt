@@ -12,8 +12,11 @@ ament_auto_find_build_dependencies()
 set(TARGET ping)
 ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
 
-# set(TARGET write_pos)
-# ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
+set(TARGET set_pos)
+ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
+
+set(TARGET write_pos)
+ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
 
 # set(TARGET write_only)
 # ament_auto_add_executable(${TARGET} ./src/no_api/${TARGET}.cpp)
@@ -30,8 +33,8 @@ ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
 # set(TARGET write_spd)
 # ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
 
-# set(TARGET set_pos)
-# ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
+set(TARGET differential_wheel_control)
+ament_auto_add_executable(${TARGET} ./src/${TARGET}.cpp)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
