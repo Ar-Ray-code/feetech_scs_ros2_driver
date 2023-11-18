@@ -282,62 +282,165 @@ namespace feetech_sts_interface
         return ret;
     }
 
-    bool PacketHandler::writePosEx(const u_char id, const int16_t position, const u_short speed, const u_short acc)
-    {
-        int16_t pos = position;
-        if (pos < 0)
-        {
-            pos = -pos;
-            pos |= (1 << 15);
-        }
-        u_char bBuf[7];
-        bBuf[0] = acc;                       // SMS_STS_ACC 41
-        host2STS(bBuf + 1, bBuf + 2, pos);   // SMS_STS_GOAL_POSITION 42, 43
-        host2STS(bBuf + 3, bBuf + 4, 0);     // SMS_STS_GOAL_TIME 44, 45
-        host2STS(bBuf + 4, bBuf + 6, speed); // SMS_STS_GOAL_SPEED 46, 47
-
-        return genWrite(id, SMS_STS_ACC, bBuf, sizeof(bBuf));
-    }
-
-    bool PacketHandler::writeSpd(
-        const u_char id, const int16_t speed, const u_char acc)
-    {
-        int16_t speed_pwm = speed;
-        if (speed_pwm < 0)
-        {
-            speed_pwm = -speed_pwm;
-            speed_pwm |= (1 << 15);
-        }
-        u_char bBuf[2];
-        bBuf[0] = acc;
-        writeBuf(id, SMS_STS_ACC, bBuf, 1, INST_WRITE);
-        host2STS(bBuf + 0, bBuf + 1, speed_pwm);
-
-        return genWrite(id, SMS_STS_GOAL_SPEED_L, bBuf, sizeof(bBuf));
-    }
-
-    // bool PacketHandler::syncWriteSpd(const u_char *id, const u_char idn, const int16_t *speed, const u_char *acc)
+    // bool PacketHandler::writePosEx(const u_char id, const int16_t position, const int16_t speed, const u_short acc)
     // {
-    //     u_char acc_buf[idn];
-    //     u_char spd_buf[2 * idn];
-    //     for (u_char i = 0; i < idn; i++)
+    //     int16_t pos = position;
+    //     if (pos < 0)
     //     {
-    //         int16_t speed_pwm = speed[i];
-    //         if (speed_pwm < 0)
-    //         {
-    //             speed_pwm = -speed_pwm;
-    //             speed_pwm |= (1 << 15);
-    //         }
-    //         acc_buf[i * 2] = acc[i];
-    //         host2STS(spd_buf + i * 2 + 1, spd_buf + i * 2 + 2, speed_pwm);
+    //         pos = -pos;
+    //         pos |= (1 << 15);
     //     }
-    //     bool ret;
-    //     ret = syncWrite(id, idn, SMS_STS_ACC, acc_buf, 1);
-    //     ret &= syncWrite(id, idn, SMS_STS_GOAL_SPEED_L, spd_buf, 2);
-
-    //     ret &= this->triggerAction();
-    //     return ret;
+    //     int16_t V = speed;
+    //     if (V < 0)
+    //     {
+    //         V = -V;
+    //         V |= (1 << 15);
+    //     }
+    //     u_char bBuf[7];
+    //     bBuf[0] = acc;                       // SMS_STS_ACC 41
+    //     host2STS(bBuf + 1, bBuf + 2, pos);   // SMS_STS_GOAL_POSITION 42, 43
+    //     host2STS(bBuf + 3, bBuf + 4, 0);     // SMS_STS_GOAL_TIME 44, 45
+    //     host2STS(bBuf + 4, bBuf + 6, V);     // SMS_STS_GOAL_SPEED 46, 47
+    //     return genWrite(id, SMS_STS_ACC, bBuf, sizeof(bBuf));
     // }
+
+    // bool PacketHandler::writeSpd(
+    //     const u_char id, const int16_t speed, const u_short acc)
+    // {
+    //     int16_t speed_pwm = speed;
+    //     if (speed_pwm < 0)
+    //     {
+    //         speed_pwm = -speed_pwm;
+    //         speed_pwm |= (1 << 15);
+    //     }
+    //     u_char bBuf[2];
+    //     bBuf[0] = acc;
+    //     writeBuf(id, SMS_STS_ACC, bBuf, 1, INST_WRITE);
+    //     host2STS(bBuf + 0, bBuf + 1, speed_pwm);
+    //     return genWrite(id, SMS_STS_GOAL_SPEED_L, bBuf, sizeof(bBuf));
+    // }
+
+    // bool PacketHandler::writeTime(const u_char id, const int16_t time)
+    // {
+    //     int16_t t = time;
+    //     if (t < 0)
+    //     {
+    //         t = -t;
+    //         t |= (1 << 10);
+    //     }
+    //     u_char bBuf[7];
+    //     bBuf[0] = 0;
+    //     host2STS(bBuf + 1, bBuf + 2, 0);
+    //     host2STS(bBuf + 3, bBuf + 4, t);  // SMS_STS_GOAL_TIME 44, 45
+    //     host2STS(bBuf + 4, bBuf + 6, 0);
+    //     return genWrite(id, SMS_STS_ACC, bBuf, sizeof(bBuf));
+    // }
+
+    bool PacketHandler::syncWritePosEx(const u_char *ID, const u_char IDN, const int16_t *Position, const int16_t *Speed, const u_short *ACC)
+    {
+        u_char offbuf[7 * IDN];
+        for (u_char i = 0; i < IDN; ++i)
+        {
+            int16_t pos = Position[i];
+            if (pos < 0)
+            {
+                pos = -pos;
+                pos |= (1 << 15);
+            }
+            int16_t V;
+            if (Speed)
+            {
+                V = Speed[i];
+                if (V < 0)
+                {
+                    V = -V;
+                    V |= (1 << 15);
+                }
+            }
+            else
+            {
+                V = 0;
+            }
+            if (ACC)
+            {
+                offbuf[i * 7] = ACC[i];
+            }
+            else
+            {
+                offbuf[i * 7] = 0;
+            }
+            // acc, pos_l, pos_h, 0, 0, vel_l, vel_h
+            host2STS(offbuf + i * 7 + 1, offbuf + i * 7 + 2, pos);
+            host2STS(offbuf + i * 7 + 3, offbuf + i * 7 + 4, 0);
+            host2STS(offbuf + i * 7 + 5, offbuf + i * 7 + 6, V);
+        }
+        return syncWrite(ID, IDN, SMS_STS_ACC, offbuf, 7);
+    }
+
+    bool PacketHandler::syncWriteSpd(const u_char *ID, const u_char IDN, const int16_t *Speed, const u_short *ACC)
+    {
+        u_char offbuf[7 * IDN];
+        for (u_char i = 0; i < IDN; ++i)
+        {
+            int16_t V;
+            if (Speed)
+            {
+                V = Speed[i];
+                if (V < 0)
+                {
+                    V = -V;
+                    V |= (1 << 15);
+                }
+            }
+            else
+            {
+                V = 0;
+            }
+            if (ACC)
+            {
+                offbuf[i * 7] = ACC[i];
+            }
+            else
+            {
+                offbuf[i * 7] = 0;
+            }
+            // acc, pos_l, pos_h, time_l, time_h, vel_l, vel_h
+            host2STS(offbuf + i * 7 + 1, offbuf + i * 7 + 2, 0);
+            host2STS(offbuf + i * 7 + 3, offbuf + i * 7 + 4, 0);
+            host2STS(offbuf + i * 7 + 5, offbuf + i * 7 + 6, V);
+        }
+        return syncWrite(ID, IDN, SMS_STS_ACC, offbuf, 7);
+    }
+
+    bool PacketHandler::syncWriteTime(const u_char *ID, const u_char IDN, const int16_t *Time)
+    {
+        u_char offbuf[7 * IDN];
+        for (u_char i = 0; i < IDN; ++i)
+        {
+            int16_t T;
+            if (Time)
+            {
+                T = Time[i];
+                if (T < 0)
+                {
+                    T = -T;
+                    // T |= (1 << 15);
+                    T |= (1 << 10);
+                }
+            }
+            else
+            {
+                T = 0;
+            }
+            offbuf[i * 7] = 0;
+            // acc, pos_l, pos_h, time_l, time_h, vel_l, vel_h
+            host2STS(offbuf + i * 7 + 1, offbuf + i * 7 + 2, 0);
+            host2STS(offbuf + i * 7 + 3, offbuf + i * 7 + 4, T);
+            host2STS(offbuf + i * 7 + 5, offbuf + i * 7 + 6, 0);
+        }
+        return syncWrite(ID, IDN, SMS_STS_ACC, offbuf, 7);
+
+    }
 
     int16_t PacketHandler::readPos(const u_char id)
     {
@@ -358,7 +461,7 @@ namespace feetech_sts_interface
     int16_t PacketHandler::readSpd(const u_char id)
     {
         int err = 0;
-        auto speed = -1;
+        int16_t speed = -1;
         speed = this->readWord(id, SMS_STS_PRESENT_SPEED_L);
         if (speed == -1)
         {
@@ -411,47 +514,6 @@ namespace feetech_sts_interface
         this->port_handler_->write(&s, 1);
         write_flush();
         return true;
-    }
-
-    bool PacketHandler::syncWritePosEx(const u_char *ID, const u_char IDN, const int16_t *Position, const int16_t *Speed, const u_short *ACC)
-    {
-        u_char offbuf[7 * IDN];
-        for (u_char i = 0; i < IDN; ++i)
-        {
-            int16_t pos = Position[i];
-            if (pos < 0)
-            {
-                pos = -pos;
-                pos |= (1 << 15);
-            }
-            int16_t V;
-            if (Speed)
-            {
-                V = Speed[i];
-                if (V < 0)
-                {
-                    V = -V;
-                    V |= (1 << 15);
-                }
-            }
-            else
-            {
-                V = 0;
-            }
-            if (ACC)
-            {
-                offbuf[i * 7] = ACC[i];
-            }
-            else
-            {
-                offbuf[i * 7] = 0;
-            }
-            // acc, pos_l, pos_h, 0, 0, vel_l, vel_h
-            host2STS(offbuf + i * 7 + 1, offbuf + i * 7 + 2, pos);
-            host2STS(offbuf + i * 7 + 3, offbuf + i * 7 + 4, 0);
-            host2STS(offbuf + i * 7 + 5, offbuf + i * 7 + 6, V);
-        }
-        return syncWrite(ID, IDN, SMS_STS_ACC, offbuf, 7);
     }
 
     bool PacketHandler::setTorque(const u_char id, const bool on)

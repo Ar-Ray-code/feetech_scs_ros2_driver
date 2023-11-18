@@ -38,15 +38,19 @@ namespace feetech_sts_interface
 
     bool ping(int id);
 
-    //
-    bool writePosEx(const u_char id, const int16_t position, const u_short speed, const u_short acc);
-    // bool regWritePosEx(const u_char id, const int16_t position, const u_short speed, const u_short acc);
-    //
+    // bool writePosEx(const u_char id, const int16_t position, const int16_t speed, const u_short acc);
     bool syncWritePosEx(const u_char *ID, const u_char IDN, const int16_t *Position, const int16_t *Speed, const u_short *ACC);
+    // bool regWritePosEx(const u_char id, const int16_t position, const u_short speed, const u_short acc);
+
+    // bool writeSpd(const u_char id, const int16_t speed, const u_short acc);
+    bool syncWriteSpd(const u_char *ID, const u_char IDN, const int16_t *Speed, const u_short *ACC);
+
+    // bool writeTime(const u_char id, const int16_t time);
+    bool syncWriteTime(const u_char *ID, const u_char IDN, const int16_t *Time);
 
     bool setRotationMode(const u_char id);
-    bool setWheelMode(const u_char id);
-    bool setOpenLoopWheelMode(const u_char id);
+    bool setWheelMode(const u_char id); // closed loop
+    bool setOpenLoopWheelMode(const u_char id); // open loop
     bool setStepMode(const u_char id);
 
     bool setTorque(const u_char id, const bool on);
@@ -54,10 +58,6 @@ namespace feetech_sts_interface
 
     bool setMaxAngleLimit(const u_char id, const int16_t angle);
     bool setMinAngleLimit(const u_char id, const int16_t angle);
-
-    bool writeSpd(const u_char id, const int16_t speed, const u_char acc);
-    //
-    // bool syncWriteSpd(const u_char *id, const u_char idn, const int16_t *speed, const u_char *acc);
 
     int reg_write_action(const u_char id);
 

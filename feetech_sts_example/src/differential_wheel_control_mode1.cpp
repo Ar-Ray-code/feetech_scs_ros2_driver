@@ -7,8 +7,8 @@
 wheel_speed convert_to_speed(geometry_msgs::msg::Twist cmd_vel)
 {
   wheel_speed ret = {};
-  ret.right = cm_sec_to_step_sec(linear_coef * cmd_vel.linear.x + angular_coef_r * cmd_vel.angular.z);
-  ret.left = -cm_sec_to_step_sec(linear_coef * cmd_vel.linear.x + angular_coef_l * cmd_vel.angular.z);
+  ret.right = STEP_RATIO * (linear_coef * cmd_vel.linear.x + angular_coef_r * cmd_vel.angular.z);
+  ret.left = -STEP_RATIO * (linear_coef * cmd_vel.linear.x + angular_coef_l * cmd_vel.angular.z);
   ret.right = clip(ret.right, MAX_SPEED, -MAX_SPEED);
   ret.left = clip(ret.left, MAX_SPEED, -MAX_SPEED);
   return ret;
@@ -22,15 +22,21 @@ void move_cmd(const u_char id_right, const u_char id_left,
   u_char id_list[2] = {(u_char)id_right, (u_char)id_left};
   int16_t vel_list[2] = {speed.right, speed.left};
   u_short acc_list[2] = {(u_short)ACC, (u_short)ACC};
-  int16_t goal_list[2] = {+1000, -1000,};
-  packet_handler->syncWritePosEx(id_list, sizeof(id_list), goal_list, vel_list, acc_list);
+  int16_t goal_list[2] = {1000, -1000};
+  // packet_handler->syncWritePosEx(id_list, sizeof(id_list), goal_list, vel_list, acc_list);
+  packet_handler->syncWriteSpd(id_list, sizeof(id_list), vel_list, acc_list);
+
 }
 
 void stop(
   const u_char id_right, const u_char id_left,
   std::shared_ptr<feetech_sts_interface::PacketHandler> packet_handler)
 {
-  move_cmd(id_right, id_left, packet_handler, geometry_msgs::msg::Twist());
+  u_char id_list[2] = {(u_char)id_right, (u_char)id_left};
+  int16_t vel_list[2] = {0, 0};
+  u_short acc_list[2] = {0, 0};
+  int16_t goal_list[2] = {0, 0};
+  packet_handler->syncWritePosEx(id_list, sizeof(id_list), goal_list, vel_list, acc_list);
 }
 
 void set_wheel_mode(
@@ -38,22 +44,16 @@ void set_wheel_mode(
   std::shared_ptr<feetech_sts_interface::PacketHandler> packet_handler)
 {
   packet_handler->unlockEprom(id_right);
-  // packet_handler->setOpenLoopWheelMode(id_right);
   packet_handler->setWheelMode(id_right);
-  // packet_handler->setStepMode(id_right);
+  // packet_handler->setOpenLoopWheelMode(id_right);
   packet_handler->setTorque(id_right, true);
-  // packet_handler->setTorque(id_right, false);
-  // packet_handler->setMaxAngleLimit(id_right, 0);
   packet_handler->calbrationOffset(id_right);
   packet_handler->lockEprom(id_right);
 
   packet_handler->unlockEprom(id_left);
-  // packet_handler->setOpenLoopWheelMode(id_left);
   packet_handler->setWheelMode(id_left);
-  // packet_handler->setStepMode(id_left);
+  // packet_handler->setOpenLoopWheelMode(id_left);
   packet_handler->setTorque(id_left, true);
-  // packet_handler->setTorque(id_left, false);
-  // packet_handler->setMaxAngleLimit(id_left, 0);
   packet_handler->calbrationOffset(id_left);
   packet_handler->lockEprom(id_left);
 }
@@ -84,6 +84,7 @@ int main(int argc, char **argv)
   const int LEFT_ID = std::atoi(argv[2]);
   std::string port_name = argv[3];
   const int baudrate = std::stoi(argv[4]);
+  std::cout << "Closed Loop Mode" << std::endl;
   std::cout << "RIGHT_ID: " << RIGHT_ID << std::endl;
   std::cout << "LEFT_ID: " << LEFT_ID << std::endl;
   std::cout << "port_name: " << port_name << std::endl;
@@ -99,21 +100,44 @@ int main(int argc, char **argv)
   }
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  std::cout << "set wheel mode." << std::endl;
+  std::cout << "set closed loop wheel mode." << std::endl;
   set_wheel_mode(RIGHT_ID, LEFT_ID, packet_handler);
   std::cout << "done." << std::endl;
 
   geometry_msgs::msg::Twist cmd_vel;
 
   std::cout << "MOVE FORWARD." << std::endl;
-  cmd_vel.linear.x = 2.0;  // [cm/sec]
+  cmd_vel.linear.x = 5.0;  // [cm/sec]
   cmd_vel.angular.z = 0.0; // [rad/sec]
   move_cmd(RIGHT_ID, LEFT_ID, packet_handler, cmd_vel);
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  float speed_right = 0.0f;
+  float speed_left = 0.0f;
+  for (size_t i = 0; i < 5; ++i)
+  {
+    speed_right = feetech_sts_interface::STS3032::data2angle(packet_handler->readSpd(RIGHT_ID));
+    speed_left = feetech_sts_interface::STS3032::data2angle(packet_handler->readSpd(LEFT_ID));
+    std::cout << "wheel speed right/ left: " << speed_right << " / " << speed_left << " [deg/sec]" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
 
   std::cout << "STOP." << std::endl;
   stop(RIGHT_ID, LEFT_ID, packet_handler);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
+  size_t counter = 0;
+  while (counter < 10)
+  {
+    speed_right = feetech_sts_interface::STS3032::data2angle(packet_handler->readSpd(RIGHT_ID));
+    speed_left = feetech_sts_interface::STS3032::data2angle(packet_handler->readSpd(LEFT_ID));
+    std::cout << "wheel speed right/ left: " << speed_right << " / " << speed_left << " [deg/sec]" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (speed_left == 0.0f && speed_right == 0.0f)
+    {
+      ++counter;
+    }
+    else
+    {
+      counter = 0;
+    }
+  }
 
   port_handler->close();
   std::cout << "shutdown." << std::endl;
