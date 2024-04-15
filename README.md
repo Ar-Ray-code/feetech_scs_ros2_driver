@@ -26,9 +26,11 @@ https://pages.switch-science.com/comparison/feetech-servos#serial
 | SCS20-360T | |
 | SCS15 | |
 
-### FeeTech-SCS
+### FeeTech-STS
 
-STS will be supported in the future.
+| Product Name | Support |
+| --- | --- |
+| STS3032 |  |
 
 <br>
 
