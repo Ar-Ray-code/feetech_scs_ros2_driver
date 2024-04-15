@@ -38,7 +38,8 @@ namespace feetech_sts_interface
 
     bool ping(int id);
 
-    // bool writePosEx(const u_char id, const int16_t position, const int16_t speed, const u_short acc);
+    bool writePos(const u_char id, const u_short position, const u_short time, const u_short speed);
+    bool writePosEx(const u_char id, const int16_t position, const int16_t speed, const u_short acc);
     bool syncWritePosEx(const u_char *ID, const u_char IDN, const int16_t *Position, const int16_t *Speed, const u_short *ACC);
     // bool regWritePosEx(const u_char id, const int16_t position, const u_short speed, const u_short acc);
 

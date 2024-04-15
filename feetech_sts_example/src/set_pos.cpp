@@ -27,6 +27,7 @@ void set_target_pose(std::shared_ptr<feetech_sts_interface::PacketHandler> packe
 
   int target_angle = feetech_sts_interface::STS3032::angle2data(position);
 
+  std::cout << "current pos: " << feetech_sts_interface::STS3032::data2angle(current_pos) << " deg" << std::endl;
   packet_handler->writePosEx(target_id, target_angle, speed, acceleration);
   // int sleep_time = int((fabs((float)current_pos - (float)target_angle) / (float)speed) * 1000 + ((float)speed / ((float)acceleration * 100)) * 1000);
   const int sleep_time = 10 * 1000;

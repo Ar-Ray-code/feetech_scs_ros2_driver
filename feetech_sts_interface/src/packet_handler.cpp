@@ -282,27 +282,37 @@ namespace feetech_sts_interface
         return ret;
     }
 
-    // bool PacketHandler::writePosEx(const u_char id, const int16_t position, const int16_t speed, const u_short acc)
-    // {
-    //     int16_t pos = position;
-    //     if (pos < 0)
-    //     {
-    //         pos = -pos;
-    //         pos |= (1 << 15);
-    //     }
-    //     int16_t V = speed;
-    //     if (V < 0)
-    //     {
-    //         V = -V;
-    //         V |= (1 << 15);
-    //     }
-    //     u_char bBuf[7];
-    //     bBuf[0] = acc;                       // SMS_STS_ACC 41
-    //     host2STS(bBuf + 1, bBuf + 2, pos);   // SMS_STS_GOAL_POSITION 42, 43
-    //     host2STS(bBuf + 3, bBuf + 4, 0);     // SMS_STS_GOAL_TIME 44, 45
-    //     host2STS(bBuf + 4, bBuf + 6, V);     // SMS_STS_GOAL_SPEED 46, 47
-    //     return genWrite(id, SMS_STS_ACC, bBuf, sizeof(bBuf));
-    // }
+    bool PacketHandler::writePos(const u_char id, const u_short position, const u_short time, const u_short speed)
+    {
+        u_char bBuf[6];
+        host2STS(bBuf + 0, bBuf + 1, position);
+        host2STS(bBuf + 2, bBuf + 3, time);
+        host2STS(bBuf + 4, bBuf + 5, speed);
+        // return genWrite(id, SMS_STS_GOAL_POSITION_L, bBuf, sizeof(bBuf));
+        return writeBuf(id, SMS_STS_GOAL_POSITION_L, bBuf, sizeof(bBuf), INST_WRITE);
+    }
+
+    bool PacketHandler::writePosEx(const u_char id, const int16_t position, const int16_t speed, const u_short acc)
+    {
+        int16_t pos = position;
+        if (pos < 0)
+        {
+            pos = -pos;
+            pos |= (1 << 15);
+        }
+        int16_t V = speed;
+        if (V < 0)
+        {
+            V = -V;
+            V |= (1 << 15);
+        }
+        u_char bBuf[7];
+        bBuf[0] = acc;                       // SMS_STS_ACC 41
+        host2STS(bBuf + 1, bBuf + 2, pos);   // SMS_STS_GOAL_POSITION 42, 43
+        host2STS(bBuf + 3, bBuf + 4, 0);     // SMS_STS_GOAL_TIME 44, 45
+        host2STS(bBuf + 4, bBuf + 6, V);     // SMS_STS_GOAL_SPEED 46, 47
+        return genWrite(id, SMS_STS_ACC, bBuf, sizeof(bBuf));
+    }
 
     // bool PacketHandler::writeSpd(
     //     const u_char id, const int16_t speed, const u_short acc)
